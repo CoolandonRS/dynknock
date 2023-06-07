@@ -8,7 +8,7 @@ namespace Dynknock_Client;
 
 
 internal class Client {
-    // TODO change to conf file
+    // TODO-LT++ change to conf file
     public static readonly ArgHandler ArgHandler = new(new Dictionary<string, ArgData>() {
             { "interval", new ArgData(new ArgDesc("--interval=[int]", "Interval to generate new codes in seconds (>=30). Default 1 day"), "86400") },
             { "length", new ArgData(new ArgDesc("--length=[int]", "The length of the sequence. Default 32"), "32") },
@@ -22,7 +22,7 @@ internal class Client {
     
     public static async Task Main(string[] args) {
         ArgHandler.ParseArgs(args);
-        // TODO enforce param ranges and required params, and env var
+        // TODO-LT+++ enforce param ranges and required params, and env var
         var hostname = ArgHandler.GetValue("hostname").AsString();
         IPAddress ip;
         if (!IPAddress.TryParse(hostname, out ip)) {

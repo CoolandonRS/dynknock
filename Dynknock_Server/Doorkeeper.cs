@@ -25,20 +25,15 @@ public class Doorkeeper {
 
         public void Knock((int port, Protocol protocol) sent) {
             if (disposed) throw new ObjectDisposedException("Guest");
-            Console.WriteLine(sent);
             if (sent != sequence[idx]) Dispose();
             idx++;
             if (idx != sequence.Length) return;
-            Console.WriteLine("finish");
             finish(this);
             Dispose();
         }
         
         public void Dispose() {
             if (disposed) throw new ObjectDisposedException("Guest");
-            Console.WriteLine("dispose");
-            Console.WriteLine(ip);
-            Console.WriteLine(string.Join(", ", sequence));
             disposed = true;
             cancel.Cancel();
             clean(this);
@@ -47,7 +42,6 @@ public class Doorkeeper {
         private async Task AwaitTimeout(int timeout) {
             cancel = new CancellationTokenSource();
             await Task.Delay(TimeSpan.FromSeconds(timeout), cancel.Token);
-            Console.WriteLine("timeout");
             Dispose();
         }
 
@@ -67,7 +61,6 @@ public class Doorkeeper {
         if (cPeriod == period) return;
         period = cPeriod;
         sequence = SequenceGen.GenPeriod(key, period, len);
-        Console.WriteLine("refresh");
     }
 
     private async Task BackgroundRefresh() {
@@ -80,17 +73,14 @@ public class Doorkeeper {
     public void Ring(IPAddress ip, (int port, Protocol protocol) knock) {
         if (knock.port != doorbell) return;
         if (guests.ContainsKey(ip)) return;
-        Console.WriteLine("doorbell");
         guests.Add(ip, new Guest(ip, sequence, timeout, g => {
-            // TODO actually do the thing
-            Console.WriteLine("You win! :)");
+            // TODO-LT actually do the thing
         }, g => guests.Remove(g.ip)));
     }
     
     public void Knock(IPAddress ip, (int port, Protocol protocol) knock) {
         if (!guests.ContainsKey(ip)) return;
         if (knock.port == doorbell) return;
-        Console.WriteLine("knock");
         guests[ip].Knock(knock);
     }
 
