@@ -52,13 +52,13 @@ internal class Server {
         }
         
         if (device == null) Fatal("Interface not found");
-        device.Open(DeviceModes.MaxResponsiveness, 50);
+        device.Open(DeviceModes.NoCaptureLocal, 50);
         var inf = device!;
 
         var ips = NetworkInterface.GetAllNetworkInterfaces().First(nInf => Equals(nInf.GetPhysicalAddress(), inf.MacAddress)).GetIPProperties().UnicastAddresses.Where(addr => addr.Address.AddressFamily == AddressFamily.InterNetwork).Select(addr => addr.Address).ToArray(); 
-        // TODO make the filter work on localhost too
+        // TODO-LT make the filter work on localhost too
         // BEFORECOMMIT uncomment \/
-        // inf.Filter = $"{string.Join(" or ", ips.Select(ip => "dst host " + ip).ToArray())}";
+        inf.Filter = $"{string.Join(" or ", ips.Select(ip => "dst host " + ip).ToArray())}";
 
         var doorkeeper = new Doorkeeper(Environment.GetEnvironmentVariable("KNOCK_KEY")!, ArgHandler.GetValue("interval").AsInt(), ArgHandler.GetValue("length").AsInt(), ArgHandler.GetValue("timeout").AsInt(), ArgHandler.GetValue("doorbell").AsInt());
         

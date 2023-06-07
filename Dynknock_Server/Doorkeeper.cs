@@ -37,7 +37,8 @@ public class Doorkeeper {
         public void Dispose() {
             if (disposed) throw new ObjectDisposedException("Guest");
             Console.WriteLine("dispose");
-            Console.WriteLine(sequence);
+            Console.WriteLine(ip);
+            Console.WriteLine(string.Join(", ", sequence));
             disposed = true;
             cancel.Cancel();
             clean(this);
@@ -66,6 +67,7 @@ public class Doorkeeper {
         if (cPeriod == period) return;
         period = cPeriod;
         sequence = SequenceGen.GenPeriod(key, period, len);
+        Console.WriteLine("refresh");
     }
 
     private async Task BackgroundRefresh() {
@@ -77,6 +79,7 @@ public class Doorkeeper {
 
     public void Ring(IPAddress ip, (int port, Protocol protocol) knock) {
         if (knock.port != doorbell) return;
+        if (guests.ContainsKey(ip)) return;
         Console.WriteLine("doorbell");
         guests.Add(ip, new Guest(ip, sequence, timeout, g => {
             // TODO actually do the thing
