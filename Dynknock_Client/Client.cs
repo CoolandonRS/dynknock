@@ -29,7 +29,7 @@ internal class Client {
             ip = (await Dns.GetHostAddressesAsync(hostname))[0];
         }
         var seq = SequenceGen.Gen(Environment.GetEnvironmentVariable("KNOCK_KEY")!, ArgHandler.GetValue("interval").AsInt(), ArgHandler.GetValue("length").AsInt());
-        seq = seq.Prepend((ArgHandler.GetValue("doorbell").AsInt(), Protocol.Tcp)).ToArray();
+        var doorbell = ArgHandler.GetValue("doorbell").AsInt();
         var pause = ArgHandler.GetValue("pause").AsInt();
         var print = ArgHandler.GetFlag('p');
         async Task knock(Socket sock, EndPoint ep) {
@@ -37,6 +37,9 @@ internal class Client {
             await sock.SendAsync(Array.Empty<byte>());
             sock.Close();
         }
+        knock(new Socket(SocketType.Stream, ProtocolType.Tcp), new IPEndPoint(ip, doorbell));
+        if (print) Console.WriteLine($"Rung {doorbell}");
+        await Task.Delay(pause);
         foreach (var (port, protocol) in seq) {
             var endpoint = new IPEndPoint(ip, port);
             var sock = protocol switch {
