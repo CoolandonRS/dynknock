@@ -1,24 +1,18 @@
 ﻿using System.Net;
-using System.Runtime.CompilerServices;
-using PacketDotNet.Utils.Converters;
 
 namespace Dynknock_Server;
 
 public class Doorkeeper {
     private (int port, Protocol protocol)[] sequence;
-    private string key;
-    private int interval;
+    private Hallway hallway;
     private int period;
-    private int len;
-    private int timeout;
     private Dictionary<IPAddress, Guest> guests;
-    private int doorbell;
 
     private class Guest {
         public IPAddress ip { get; private set; }
         private int idx = 0;
         private (int port, Protocol protocol)[] sequence;
-        private Action<Guest> finish;
+        private Action<IPAddress> finish;
         private bool disposed = false;
         private Action<Guest> clean;
         private CancellationTokenSource cancel;
@@ -28,7 +22,7 @@ public class Doorkeeper {
             if (sent != sequence[idx]) Dispose();
             idx++;
             if (idx != sequence.Length) return;
-            finish(this);
+            finish(ip);
             Dispose();
         }
         
@@ -45,22 +39,23 @@ public class Doorkeeper {
             Dispose();
         }
 
-        public Guest(IPAddress ip, (int port, Protocol protocol)[] sequence, int timeout, Action<Guest> onAuth, Action<Guest>? onDispose = null) {
+        public Guest(IPAddress ip, (int port, Protocol protocol)[] sequence, Hallway hallway, Action<Guest>? onDispose = null) {
             this.ip = ip;
             this.sequence = sequence;
-            this.finish = onAuth;
             this.clean = onDispose;
+            this.finish = hallway.Open;
             #pragma warning disable CS4014
-            AwaitTimeout(timeout);
+            AwaitTimeout(hallway.timeout);
             #pragma warning restore CS4014
         }
     }
 
     private void RefreshSequence() {
-        var cPeriod = (int) DateTimeOffset.UtcNow.ToUnixTimeSeconds() / interval;
+        var cPeriod = (int) DateTimeOffset.UtcNow.ToUnixTimeSeconds() / hallway.interval;
         if (cPeriod == period) return;
         period = cPeriod;
-        sequence = SequenceGen.GenPeriod(key, period, len);
+        sequence = SequenceGen.GenPeriod(hallway.key, period, hallway.length);
+        hallway.Update();
     }
 
     private async Task BackgroundRefresh() {
@@ -71,26 +66,20 @@ public class Doorkeeper {
     }
 
     public void Ring(IPAddress ip, (int port, Protocol protocol) knock) {
-        if (knock.port != doorbell) return;
+        if (knock.port != hallway.doorbell) return;
         if (guests.ContainsKey(ip)) return;
-        guests.Add(ip, new Guest(ip, sequence, timeout, g => {
-            // TODO-LT actually do the thing
-        }, g => guests.Remove(g.ip)));
+        guests.Add(ip, new Guest(ip, sequence, hallway, g => guests.Remove(g.ip)));
     }
     
     public void Knock(IPAddress ip, (int port, Protocol protocol) knock) {
         if (!guests.ContainsKey(ip)) return;
-        if (knock.port == doorbell) return;
+        if (knock.port == hallway.doorbell) return;
         guests[ip].Knock(knock);
     }
 
-    public Doorkeeper(string key, int interval, int len, int timeout, int doorbell) {
-        this.key = key;
-        this.interval = interval;
+    public Doorkeeper(Hallway hallway) {
+        this.hallway = hallway;
         this.period = 0;
-        this.len = len;
-        this.timeout = timeout;
-        this.doorbell = doorbell;
         this.guests = new Dictionary<IPAddress, Guest>();
         RefreshSequence();
         #pragma warning disable CS4014

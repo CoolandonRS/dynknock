@@ -1,0 +1,16 @@
+{
+    // The hostname or IP Adress of the server
+    "hostname": "example",
+    // Key to use for generating knock sequence
+    "key": "supersecretkey",
+    // How long (in seconds) each knock sequence lasts
+    "interval": 86400,
+    // How long each knock sequence is
+    "length": 32,
+    // How long you have to complete a knock sequence
+    "timeout": 10,
+    // The doorbell port (you must knock it before the knock sequence. It doesn't change)
+    "doorbell": 12345,
+    // How long (in milliseconds) to wait inbetween knocks
+    "pause": 100
+}

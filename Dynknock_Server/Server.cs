@@ -1,36 +1,17 @@
-﻿using System.Buffers.Text;
-using System.Net.NetworkInformation;
+﻿using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Text;
 using CoolandonRS.consolelib;
 using Microsoft.Win32;
 using PacketDotNet;
 using SharpPcap;
-using SharpPcap.WinpkFilter;
 
 namespace Dynknock_Server;
 
 internal class Server {
-    // TODO-LT++ change to conf file
-    public static readonly ArgHandler ArgHandler = new(new Dictionary<string, ArgData>() {
-            { "interface", new ArgData(new ArgDesc("--interface=[str]", "What interface to listen on")) },
-            { "interval", new ArgData(new ArgDesc("--interval=[int]", "Interval to generate new codes in seconds (>=30). Default 1 day"), "86400") },
-            { "length", new ArgData(new ArgDesc("--length=[int]", "The length of the sequence. Default 32"), "32") },
-            { "timeout", new ArgData(new ArgDesc("--timeout=[int]", "How long to wait for sequence completion in seconds. Default 10"), "10") },
-            { "doorbell", new ArgData(new ArgDesc("--doorbell=[port]", "The port to use as the doorbell. Should be unused."), "12345") }
-        }, new Dictionary<char, FlagData>() {
-
-        }
-    );
-    
-    public static async Task Main(string[] args) {
-        ArgHandler.ParseArgs(args);
-        // TODO-LT+++ enforce param ranges and required params, and env var
-        if (!ArgHandler.GetValue("interface").IsSet()) Fatal("Did not set interface");
+    public static async Task Start(Hallway hallway) {
         var devices = CaptureDeviceList.Instance;
         
-        var infName = ArgHandler.GetValue("interface").AsString();
         ILiveDevice? device;
         
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
@@ -43,10 +24,10 @@ internal class Server {
                 var name = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Network\{4D36E972-E325-11CE-BFC1-08002BE10318}\" + uuid + @"\Connection")!.GetValue("Name")! as string;
                 #pragma warning restore CA1416
                 return (inf, name);
-            }).FirstOrDefault(inf => inf.Item2 == infName).Item1;
+            }).FirstOrDefault(inf => inf.Item2 == hallway.inf).Item1;
         } else {
             // Look see some people are nice. You can be too, windows.
-            device = devices.FirstOrDefault(inf => inf.Name == infName);
+            device = devices.FirstOrDefault(inf => inf.Name == hallway.inf);
         }
         
         if (device == null) Fatal("Interface not found");
@@ -57,7 +38,7 @@ internal class Server {
         // TODO-LT++ make the filter work on localhost too
         inf.Filter = $"{string.Join(" or ", ips.Select(ip => "dst host " + ip).ToArray())}";
 
-        var doorkeeper = new Doorkeeper(Environment.GetEnvironmentVariable("KNOCK_KEY")!, ArgHandler.GetValue("interval").AsInt(), ArgHandler.GetValue("length").AsInt(), ArgHandler.GetValue("timeout").AsInt(), ArgHandler.GetValue("doorbell").AsInt());
+        var doorkeeper = new Doorkeeper(hallway);
         
         inf.OnPacketArrival += (sender, capture) => {
             var packet = capture.GetPacket().GetPacket();
@@ -89,6 +70,6 @@ internal class Server {
 
     public static void Fatal(string msg, int exit = 1) {
         ConsoleUtil.WriteColoredLine($"Fatal: {msg}", ConsoleColor.Red);
-        Environment.Exit(exit);
+        throw new Exception();
     }
 }

@@ -1,0 +1,23 @@
+// Example made for windows
+{
+    // Key to use for generating knock sequence
+    "key": "supersecretkey",
+    // How long (in seconds) each knock sequence lasts
+    "interval": 86400,
+    // How long each knock sequence is
+    "length": 32,
+    // How long you have to complete a knock sequence
+    "timeout": 10,
+    // The doorbell port (you must knock it before the knock sequence. It doesn't change)
+    "doorbell": 12345,
+    // The name of the interface to listen on.
+    "interface": "Wi-Fi",
+    // The command to run when someone completes the knock sequence
+    "openCommand": "msg * woot",
+    // Optional: The command to run whenever the sequence is updated. Does not need to be included in the JSON.
+    "updateCommand": null,
+    // Optional: How long to wait (in seconds) after running the OpenCommand before running CloseCommand. Required if using CloseCommand, otherwise does not need to be included in the JSON.
+    "closeDelay": null,
+    // OPtional: The command to run CloseDelay seconds after OpenCommand. Required if CloseDelay is set, otherwise does not need to be included in the JSON.
+    "closeCommand": null
+}
