@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Buffers.Text;
+using System.ComponentModel;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -57,8 +58,8 @@ internal class Client {
         if (!IPAddress.TryParse(hostname, out ip)) {
             ip = (await Dns.GetHostAddressesAsync(hostname))[0];
         }
-
-        var seq = SequenceGen.Gen(hallway.key, hallway.interval, hallway.length);
+        
+        var seq = SequenceGen.Gen(SequenceGen.GetKey(hallway.key), hallway.interval, hallway.length);
         var print = argHandler.GetFlag('p');
 
         async Task knock(Socket sock, EndPoint ep) {
@@ -66,6 +67,7 @@ internal class Client {
             await sock.SendAsync(Array.Empty<byte>());
             sock.Close();
         }
+        
         #pragma warning disable CS4014
         knock(new Socket(SocketType.Stream, ProtocolType.Tcp), new IPEndPoint(ip, hallway.doorbell));
         #pragma warning restore CS4014

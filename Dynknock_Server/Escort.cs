@@ -37,7 +37,7 @@ public class Escort {
         }
         
         foreach (var file in files) {
-            var hallway = JsonSerializer.Deserialize<Hallway>(File.ReadAllText(file), new JsonSerializerOptions() {
+            var hallway = JsonSerializer.Deserialize<Hallway>(await File.ReadAllTextAsync(file), new JsonSerializerOptions() {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 IncludeFields = true

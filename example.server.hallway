@@ -18,6 +18,6 @@
     "updateCommand": null,
     // Optional: How long to wait (in seconds) after running the OpenCommand before running CloseCommand. Required if using CloseCommand, otherwise does not need to be included in the JSON.
     "closeDelay": null,
-    // OPtional: The command to run CloseDelay seconds after OpenCommand. Required if CloseDelay is set, otherwise does not need to be included in the JSON.
+    // Optional: The command to run CloseDelay seconds after OpenCommand. Required if CloseDelay is set, otherwise does not need to be included in the JSON.
     "closeCommand": null
 }

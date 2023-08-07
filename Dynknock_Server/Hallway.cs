@@ -70,7 +70,7 @@ public class Hallway {
                 _ => throw new InvalidEnumArgumentException()
             } + $"\"{cmd}\"",
             CreateNoWindow = true,
-            UseShellExecute = false,
+            UseShellExecute = false
         };
         #pragma warning disable CS4014
         RunProcess(new Process { StartInfo = startInfo });

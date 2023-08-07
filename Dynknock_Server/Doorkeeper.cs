@@ -14,9 +14,9 @@ public class Doorkeeper {
         private (int port, Protocol protocol)[] sequence;
         private Action<IPAddress> finish;
         private bool disposed = false;
-        private Action<Guest> clean;
-        private CancellationTokenSource cancel;
-
+        private Action<Guest>? clean;
+        private CancellationTokenSource? cancel;
+        
         public void Knock((int port, Protocol protocol) sent) {
             if (disposed) throw new ObjectDisposedException("Guest");
             if (sent != sequence[idx]) Dispose();
@@ -24,13 +24,14 @@ public class Doorkeeper {
             if (idx != sequence.Length) return;
             finish(ip);
             Dispose();
+            
         }
         
         public void Dispose() {
             if (disposed) throw new ObjectDisposedException("Guest");
             disposed = true;
-            cancel.Cancel();
-            clean(this);
+            cancel?.Cancel();
+            clean?.Invoke(this);
         }
 
         private async Task AwaitTimeout(int timeout) {
@@ -54,7 +55,7 @@ public class Doorkeeper {
         var cPeriod = (int) DateTimeOffset.UtcNow.ToUnixTimeSeconds() / hallway.interval;
         if (cPeriod == period) return;
         period = cPeriod;
-        sequence = SequenceGen.GenPeriod(hallway.key, period, hallway.length);
+        sequence = SequenceGen.GenPeriod(SequenceGen.GetKey(hallway.key), period, hallway.length);
         hallway.Update();
     }
 
