@@ -9,7 +9,7 @@ using SharpPcap;
 namespace Dynknock_Server;
 
 internal class Server {
-    public static async Task Start(Hallway hallway) {
+    public static async Task Start(Hallway hallway, string hallwayName) {
         var devices = CaptureDeviceList.Instance;
         
         ILiveDevice? device;
@@ -31,14 +31,14 @@ internal class Server {
         }
         
         if (device == null) Fatal("Interface not found");
-        device.Open(DeviceModes.NoCaptureLocal, 50);
+        device.Open(DeviceModes.None, 50);
         var inf = device!;
 
         var ips = NetworkInterface.GetAllNetworkInterfaces().First(nInf => Equals(nInf.GetPhysicalAddress(), inf.MacAddress)).GetIPProperties().UnicastAddresses.Where(addr => addr.Address.AddressFamily == AddressFamily.InterNetwork).Select(addr => addr.Address).ToArray(); 
         // TODO-LT++ make the filter work on localhost too
         inf.Filter = $"{string.Join(" or ", ips.Select(ip => "dst host " + ip).ToArray())}";
 
-        var doorkeeper = new Doorkeeper(hallway);
+        var doorkeeper = new Doorkeeper(hallway, hallwayName);
         
         inf.OnPacketArrival += (sender, capture) => {
             var packet = capture.GetPacket().GetPacket();
@@ -48,19 +48,25 @@ internal class Server {
 
             Protocol protocol;
             int port;
+            byte[] data;
             if (tcpPacket != null) {
                 protocol = Protocol.Tcp;
                 port = tcpPacket.DestinationPort;
+                data = tcpPacket.PayloadData;
             } else if (udpPacket != null) {
                 protocol = Protocol.Udp;
                 port = udpPacket.DestinationPort;
+                data = udpPacket.PayloadData;
             } else {
                 return;
             }
             var ip = ipPacket.SourceAddress;
 
-            doorkeeper.Ring(ip, (port, protocol));
-            doorkeeper.Knock(ip, (port, protocol));
+            if (doorkeeper.Registered(ip)) {
+                doorkeeper.Knock(ip, (port, protocol));
+            } else {
+                doorkeeper.Ring(ip, port, data);
+            }
         };
         
         inf.StartCapture();
@@ -68,7 +74,7 @@ internal class Server {
         await Task.Delay(-1);
     }
 
-    public static void Fatal(string msg, int exit = 1) {
+    public static void Fatal(string msg, int exit = -1) {
         ConsoleUtil.WriteColoredLine($"Fatal: {msg}", ConsoleColor.Red);
         throw new Exception();
     }

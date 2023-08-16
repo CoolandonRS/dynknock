@@ -3,18 +3,21 @@
 namespace Dynknock_Client; 
 
 public class Hallway {
+    // internal set not because desired, but because source generation requires public or internal set, and if I want to trim assemblies I need to use source generation, and internal is better then public.
+    // ReSharper disable InconsistentNaming
+    [JsonInclude]
+    public string hostname { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public string key { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public int interval { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public int length { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public int timeout { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public int doorbell { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude] 
-    public readonly string hostname;
-    [JsonInclude]
-    public readonly string key;
-    [JsonInclude]
-    public readonly int interval;
-    [JsonInclude]
-    public readonly int length;
-    [JsonInclude]
-    public readonly int timeout;
-    [JsonInclude]
-    public readonly int doorbell;
-    [JsonInclude] 
-    public readonly int pause;
+    public int pause { get; [Obsolete("Use only for source generation")] internal set; }
+    // ReSharper restore InconsistentNaming
 }

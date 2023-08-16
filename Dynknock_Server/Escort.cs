@@ -1,6 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using CoolandonRS.consolelib;
 
 namespace Dynknock_Server; 
@@ -9,10 +8,13 @@ public class Escort {
     private static ArgHandler argHandler = new ArgHandler(new Dictionary<string, ArgData>() {
         { "hallway-dir", new ArgData(new ArgDesc("--hallway-dir=[str]", "The directory to get Hallways from")) }
     }, new Dictionary<char, FlagData>() {
-        
+        { 'v', new FlagData(new ArgDesc("-v", "Verbose mode (print things other then failures)"))}
     });
+
+    public static bool verbose { get; private set; }
     public static async Task Main(string[] args) {
         argHandler.ParseArgs(args);
+        verbose = argHandler.GetFlag('v');
         string path;
         if (argHandler.GetValue("hallway-dir").IsSet()) {
             path = argHandler.GetValue("hallway-dir").AsString();
@@ -37,18 +39,16 @@ public class Escort {
         }
         
         foreach (var file in files) {
-            var hallway = JsonSerializer.Deserialize<Hallway>(await File.ReadAllTextAsync(file), new JsonSerializerOptions() {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                ReadCommentHandling = JsonCommentHandling.Skip,
-                IncludeFields = true
-            })!;
+            if (Path.GetExtension(file) is not (".json" or ".hallway")) continue;
+            var hallway = JsonSerializer.Deserialize(await File.ReadAllTextAsync(file), HallwayContext.Default.Hallway)!;
             new Thread(async () => {
-                var hallwayName = Path.GetFileNameWithoutExtension(file);
+                var hallwayName = Path.GetFileNameWithoutExtension(file).Replace(".server", "");
                 try {
-                    Console.WriteLine($"Starting hallway {hallwayName}");
-                    await Server.Start(hallway);
+                    if (verbose) Console.WriteLine($"Starting hallway {hallwayName}");
+                    await Server.Start(hallway, hallwayName);
                 } catch {
                     ConsoleUtil.WriteColoredLine($"Hallway failure: {hallwayName}", ConsoleColor.Red);
+                    if (verbose) throw;
                 }
             }).Start();
         }

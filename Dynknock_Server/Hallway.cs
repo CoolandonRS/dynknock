@@ -10,33 +10,37 @@ namespace Dynknock_Server;
 public class Hallway {
     private static OperatingSystem os;
     
+    // ReSharper disable InconsistentNaming
     [JsonInclude]
-    public readonly string key;
+    public string key { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude]
-    public readonly int interval;
+    public int interval { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude]
-    public readonly int length;
+    public int length { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude]
-    public readonly int timeout;
+    public int timeout { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude]
-    public readonly int doorbell;
+    public int doorbell { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude, JsonPropertyName("interface")]
-    public readonly string inf;
-    [JsonInclude, JsonPropertyName("openCommand")]
-    public readonly string openCommand;
-    [JsonInclude, JsonPropertyName("updateCommand")]
-    public readonly string? updateCommand;
+    public string inf { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude]
-    public readonly int? closeDelay;
-    [JsonInclude, JsonPropertyName("closeCommand")]
-    public readonly string? closeCommand;
+    public string openCommand { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public string? updateCommand { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public int? closeDelay { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude]
+    public string? closeCommand { get; [Obsolete("Use only for source generation")] internal set; }
+    [JsonInclude, JsonPropertyName("failCommand")]
+    public string? banishmentCommand { get; [Obsolete("Use only for source generation")] internal set; }
+    // ReSharper restore InconsistentNaming
 
     private enum OperatingSystem {
         Windows, Linux
     }
 
     public void Open(IPAddress ip) {
-        Execute(openCommand.Replace("%IP%", ip.ToString()));
+        Execute(openCommand, ip);
         #pragma warning disable CS4014
         WaitAndClose(ip);
         #pragma warning restore CS4014
@@ -46,17 +50,22 @@ public class Hallway {
         Validate(); // just in case
         if (closeDelay == null) return;
         await Task.Delay(TimeSpan.FromSeconds(closeDelay!.Value));
-        Execute(closeCommand!.Replace("%IP%", ip.ToString()));
+        Execute(closeCommand!, ip);
     }
 
     public void Update() {
         if (updateCommand != null) Execute(updateCommand);
     }
 
+    public void Banish(IPAddress ip) {
+        if (banishmentCommand != null) Execute(banishmentCommand, ip);
+    }
+
     public void Validate() {
         if ((closeDelay != null && closeCommand == null) || (closeDelay == null && closeCommand != null)) throw new InvalidOperationException();
     }
 
+    private static void Execute(string cmd, IPAddress ip) => Execute(cmd.Replace("%IP%", ip.ToString()));
     private static void Execute(string cmd) {
         var startInfo = new ProcessStartInfo {
             FileName = os switch {
@@ -68,7 +77,7 @@ public class Hallway {
                 OperatingSystem.Windows => "/c",
                 OperatingSystem.Linux => "-c",
                 _ => throw new InvalidEnumArgumentException()
-            } + $"\"{cmd}\"",
+            } + $" \"{cmd}\"",
             CreateNoWindow = true,
             UseShellExecute = false
         };
@@ -81,7 +90,7 @@ public class Hallway {
         process.Start();
         await process.WaitForExitAsync();
         if (process.ExitCode != 0) {
-            ConsoleUtil.WriteColoredLine("Process exited with a non-zero exit code");
+            ConsoleUtil.WriteColoredLine("Process exited with a non-zero exit code", ConsoleColor.Yellow);
         }
     }
     static Hallway() {
