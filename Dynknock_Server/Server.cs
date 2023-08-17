@@ -48,11 +48,11 @@ internal class Server {
 
             Protocol protocol;
             int port;
-            byte[] data;
+            byte[]? data = null;
             if (tcpPacket != null) {
                 protocol = Protocol.Tcp;
                 port = tcpPacket.DestinationPort;
-                data = tcpPacket.PayloadData;
+                if (tcpPacket.PayloadData.Length > 0 || tcpPacket.Flags != 0b_0000_0000_0010) return;
             } else if (udpPacket != null) {
                 protocol = Protocol.Udp;
                 port = udpPacket.DestinationPort;
@@ -62,9 +62,9 @@ internal class Server {
             }
             var ip = ipPacket.SourceAddress;
 
-            if (doorkeeper.Registered(ip)) {
+            if (data == null && doorkeeper.Registered(ip)) {
                 doorkeeper.Knock(ip, (port, protocol));
-            } else {
+            } else if (data != null) {
                 doorkeeper.Ring(ip, port, data);
             }
         };
