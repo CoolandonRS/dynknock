@@ -74,7 +74,7 @@ internal class Server {
         await Task.Delay(-1);
     }
 
-    public static void Fatal(string msg, int exit = -1) {
+    public static void Fatal(string msg) {
         ConsoleUtil.WriteColoredLine($"Fatal: {msg}", ConsoleColor.Red);
         throw new Exception();
     }

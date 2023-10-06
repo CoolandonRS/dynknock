@@ -2,8 +2,10 @@
 using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text.Json.Serialization;
 using CoolandonRS.consolelib;
+using static Dynknock_Server.Escort.VerbosityUtil;
 
 namespace Dynknock_Server; 
 
@@ -40,6 +42,7 @@ public class Hallway {
     }
 
     public void Open(IPAddress ip) {
+        WriteVerbose($"Opening for {ip}");
         Execute(openCommand, ip);
         #pragma warning disable CS4014
         WaitAndClose(ip);
@@ -58,11 +61,12 @@ public class Hallway {
     }
 
     public void Banish(IPAddress ip) {
+        WriteVerbose($"Banishing {ip}");
         if (banishmentCommand != null) Execute(banishmentCommand, ip);
     }
 
     public void Validate() {
-        if ((closeDelay != null && closeCommand == null) || (closeDelay == null && closeCommand != null)) throw new InvalidOperationException();
+        if ((closeDelay == null) != (closeCommand == null)) throw new InvalidOperationException();
     }
 
     private static void Execute(string cmd, IPAddress ip) => Execute(cmd.Replace("%IP%", ip.ToString()));
@@ -87,6 +91,7 @@ public class Hallway {
     }
 
     private static async Task RunProcess(Process process) {
+        if (Escort.debug) throw new SecurityException("Attempted to run a command in debug mode");
         process.Start();
         await process.WaitForExitAsync();
         if (process.ExitCode != 0) {
