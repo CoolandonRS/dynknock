@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text;
+using static Dynknock_Server.Escort.VerbosityUtil;
 
 namespace Dynknock_Server;
 
@@ -23,32 +24,51 @@ public class Doorkeeper {
 
         public void Knock((int port, Protocol protocol) sent) {
             if (disposed) throw new ObjectDisposedException("Guest");
-            if (sent != sequence[idx]) { Fail(false); return; }
-            idx++;
+            if (sent != sequence[idx]) {
+                SwitchDebug(() => {
+                    WriteDebug($"{hallwayName}: {ip} failed knock {idx}. Sent {sent}, expected {sequence[idx]}", ConsoleColor.Yellow);
+                }, () => {
+                    Fail(false);
+                });
+            } else {
+                WriteDebug($"{hallwayName}: {ip} successfully knocked {idx} {sequence[idx]}");
+            }
+            if (!Escort.dontAdvanceOnFail) {
+                WriteDebug($"{hallwayName}: Advancing sequence for {ip}");
+                idx++;
+            }
             if (idx != sequence.Length) return;
-            if (Escort.verbose) Console.WriteLine($"{hallwayName}: {ip} successfully knocked");
-            success(ip);
+            WriteEither($"{hallwayName}: {ip} successfully knocked", ConsoleColor.DarkGreen);
+            WhenNotDebug(() => success(ip));
             Dispose();
         }
         
         public void Dispose() {
             if (disposed) throw new ObjectDisposedException("Guest");
+            WriteDebug($"{hallwayName}: Disposed guest {ip}");
             disposed = true;
             cancel?.Cancel();
             clean?.Invoke(this);
         }
 
         private void Fail(bool timeout) {
-            if (Escort.verbose) Console.WriteLine($"{hallwayName}: {ip} {(timeout ? "timed out" : $"failed knock {idx}")}");
-            this.failure(ip);
-            Dispose();
+            WriteVerbose($"{hallwayName}: {ip} {(timeout ? "timed out" : $"failed knock {idx}")}", ConsoleColor.Red);
+            SwitchDebug(() => {
+                // dont print non-timeout cases as those are handled in their respective areas before Fail() is called.
+                if (timeout) WriteDebug($"{hallwayName}: {ip} just timed out.", ConsoleColor.Yellow);
+            }, () => {
+                failure(ip);
+                Dispose(); 
+            });
         }
 
-        private async Task AwaitTimeout(int timeout) {
+        private async Task DelayCall(Action callback,int timeout) {
             cancel = new CancellationTokenSource();
             await Task.Delay(TimeSpan.FromSeconds(timeout), cancel.Token);
-            if (!disposed && !cancel.IsCancellationRequested) Fail(true);
+            if (!disposed && !cancel.IsCancellationRequested) callback();
         }
+
+        public void Advance() => idx++;
 
         public Guest(IPAddress ip, (int port, Protocol protocol)[] sequence, Hallway hallway, string hallwayName, Action<Guest>? onDispose = null) {
             this.ip = ip;
@@ -58,17 +78,23 @@ public class Doorkeeper {
             this.failure = hallway.Banish;
             this.hallwayName = hallwayName;
             #pragma warning disable CS4014
-            AwaitTimeout(hallway.timeout);
+            DelayCall(() => Fail(true), hallway.timeout);
+            WhenDebug(() => DelayCall(Dispose, 120));
             #pragma warning restore CS4014
         }
     }
 
     private bool RefreshSequence() {
         var cPeriod = (int) DateTimeOffset.UtcNow.ToUnixTimeSeconds() / hallway.interval;
-        if (cPeriod == period) return false;
+        if (cPeriod == period) {
+            WriteDebug("Refresh attempted, unneeded", ConsoleColor.DarkGray);
+            return false;
+        }
+        WriteDebug("Starting Refresh", ConsoleColor.DarkGray);
         period = cPeriod;
         sequence = SequenceGen.GenPeriod(SequenceGen.GetKey(hallway.key), period, hallway.length);
-        hallway.Update();
+        WriteDebug("Refreshed");
+        WhenNotDebug(() => hallway.Update());
         return true;
     }
 
@@ -80,6 +106,7 @@ public class Doorkeeper {
         // Now we can periodically await the length of interval 
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(hallway.interval));
         while (await timer.WaitForNextTickAsync()) {
+            WriteDebug("Timer requesting refresh");
             RefreshSequence();
         }
     }
@@ -88,7 +115,17 @@ public class Doorkeeper {
         if (port != hallway.doorbell) return;
         try {
             var datStr = Encoding.UTF8.GetString(data);
-            if (datStr[..8] != "DOORBELL") return;
+            switch (datStr[..8]) {
+                case "DOORBELL": break;
+                case "ADVANCE_" when Escort.debug && Registered(ip):
+                    guests[ip].Advance();
+                    return;
+                case "ENDKNOCK" when Escort.debug && Registered(ip):
+                    guests[ip].Dispose();
+                    return;
+                default:
+                    return;
+            }
             var guestPeriod = int.Parse(datStr[8..]);
             // no exceptions go on here except the ones I throw. Easier this way.
             try {
@@ -99,12 +136,12 @@ public class Doorkeeper {
                     } else throw new Exception();
                 }
             } catch {
-                if (Escort.verbose) Console.WriteLine($"{hallwayName}: {ip} failed to ring doorbell");
-                hallway.Banish(ip);
+                WriteError($"{hallwayName}: {ip} failed to ring doorbell", $"{hallway}: {ip} failed to ring doorbell, sent {guestPeriod}, period was evaluated to {period}");
+                WhenNotDebug(() => hallway.Banish(ip));
                 return;
             }
         } catch { return; }
-        if (Escort.verbose) Console.WriteLine($"{hallwayName}: {ip} rung doorbell");
+        WriteEither($"{hallwayName}: {ip} rung doorbell", ConsoleColor.Blue);
         guests.Add(ip, new Guest(ip, sequence, hallway, hallwayName, g => guests.Remove(g.ip)));
     }
 
