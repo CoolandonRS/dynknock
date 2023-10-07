@@ -5,7 +5,6 @@ using CoolandonRS.consolelib;
 using Microsoft.Win32;
 using PacketDotNet;
 using SharpPcap;
-using static Dynknock_Server.Escort.VerbosityUtil;
 
 namespace Dynknock_Server;
 

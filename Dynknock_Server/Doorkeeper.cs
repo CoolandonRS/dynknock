@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Text;
-using PacketDotNet.DhcpV4;
 using static Dynknock_Server.Escort.VerbosityUtil;
 
 namespace Dynknock_Server;
@@ -31,6 +30,8 @@ public class Doorkeeper {
                 }, () => {
                     Fail(false);
                 });
+            } else {
+                WriteDebug($"{hallwayName}: {ip} successfully knocked {idx} {sequence[idx]}");
             }
             if (!Escort.dontAdvanceOnFail) {
                 WriteDebug($"{hallwayName}: Advancing sequence for {ip}");
