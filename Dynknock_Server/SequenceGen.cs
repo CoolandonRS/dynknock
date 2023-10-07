@@ -16,7 +16,7 @@ public static class SequenceGen {
         for (var i = 0; i < len; i++) {
             dat[i] = GenDoor(key, period, i, len);
         }
-        WriteDebug("Sequence generation complete.");
+        WriteDebug("\nSequence generation complete.");
         return dat;
     }
 
