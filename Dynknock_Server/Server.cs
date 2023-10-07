@@ -5,6 +5,7 @@ using CoolandonRS.consolelib;
 using Microsoft.Win32;
 using PacketDotNet;
 using SharpPcap;
+using static Dynknock_Server.Escort.VerbosityUtil;
 
 namespace Dynknock_Server;
 
@@ -56,7 +57,7 @@ internal class Server {
             } else if (udpPacket != null) {
                 protocol = Protocol.Udp;
                 port = udpPacket.DestinationPort;
-                data = udpPacket.PayloadData;
+                data = udpPacket.PayloadData.Length == 0 ? null : udpPacket.PayloadData; 
             } else {
                 return;
             }

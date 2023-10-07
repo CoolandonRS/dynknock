@@ -125,6 +125,9 @@ internal class Client {
             if (print) Console.WriteLine($"Knocked {port}/{protocol.ToString().ToLower()}");
             await Task.Delay(hallway.pause);
         }
+        #pragma warning disable CS4014
+        if (argHandler.GetFlag('t')) Knock(new Socket(SocketType.Dgram, ProtocolType.Udp), new IPEndPoint(ip, hallway.doorbell), "ENDKNOCK"u8.ToArray());
+        #pragma warning restore CS4014 
     }
 
     public static void Fatal(string msg, int exit = 1) {
