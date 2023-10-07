@@ -28,8 +28,6 @@ public class Hallway {
     [JsonInclude]
     public string openCommand { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude]
-    public string? updateCommand { get; [Obsolete("Use only for source generation")] internal set; }
-    [JsonInclude]
     public int? closeDelay { get; [Obsolete("Use only for source generation")] internal set; }
     [JsonInclude]
     public string? closeCommand { get; [Obsolete("Use only for source generation")] internal set; }
@@ -54,10 +52,6 @@ public class Hallway {
         if (closeDelay == null) return;
         await Task.Delay(TimeSpan.FromSeconds(closeDelay!.Value));
         Execute(closeCommand!, ip);
-    }
-
-    public void Update() {
-        if (updateCommand != null) Execute(updateCommand);
     }
 
     public void Banish(IPAddress ip) {

@@ -14,8 +14,6 @@
     "interface": "Wi-Fi",
     // The command to run when someone completes the knock sequence
     "openCommand": "msg * woot",
-    // Optional: The command to run whenever the sequence is updated. Does not need to be included in the JSON.
-    "updateCommand": null,
     // Optional: How long to wait (in seconds) after running the OpenCommand before running CloseCommand. Required if using CloseCommand, otherwise does not need to be included in the JSON.
     "closeDelay": null,
     // Optional: The command to run CloseDelay seconds after OpenCommand. Required if CloseDelay is set, otherwise does not need to be included in the JSON.

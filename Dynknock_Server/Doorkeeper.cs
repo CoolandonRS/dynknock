@@ -84,31 +84,17 @@ public class Doorkeeper {
         }
     }
 
-    private bool RefreshSequence() {
+    private int RefreshSequence() {
         var cPeriod = (int) DateTimeOffset.UtcNow.ToUnixTimeSeconds() / hallway.interval;
         if (cPeriod == period) {
             WriteDebug("Refresh attempted, unneeded", ConsoleColor.DarkGray);
-            return false;
+            return period;
         }
         WriteDebug("Starting Refresh", ConsoleColor.DarkGray);
         period = cPeriod;
         sequence = SequenceGen.GenPeriod(SequenceGen.GetKey(hallway.key), period, hallway.length);
         WriteDebug("Refreshed");
-        WhenNotDebug(() => hallway.Update());
-        return true;
-    }
-
-    // TODO consider using entirely passive refresh, where sequence is only updated on knock attempt. The main argument to not use this is the updateCommand in hallway becoming arguably less useful.
-    private async Task BackgroundRefresh() {
-        // Await the amount of time until the next refresh occurs (plus a lil extra) to sync ourselves
-        await Task.Delay(TimeSpan.FromSeconds((int)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % hallway.interval) + 1));
-        RefreshSequence();
-        // Now we can periodically await the length of interval 
-        var timer = new PeriodicTimer(TimeSpan.FromSeconds(hallway.interval));
-        while (await timer.WaitForNextTickAsync()) {
-            WriteDebug("Timer requesting refresh");
-            RefreshSequence();
-        }
+        return period;
     }
 
     public void Ring(IPAddress ip, int port, byte[] data) {
@@ -129,12 +115,8 @@ public class Doorkeeper {
             var guestPeriod = int.Parse(datStr[8..]);
             // no exceptions go on here except the ones I throw. Easier this way.
             try {
-                if (guestPeriod != period) {
-                    // Just in case we still have desync (probably about a one second window) attempt to refresh if the guest's period is one ahead of hours.
-                    if (guestPeriod == period + 1) {
-                        if (!RefreshSequence()) throw new Exception();
-                    } else throw new Exception();
-                }
+                // whenever doorbell is rung, attempt to regenerate. This could be behind guestPeriod > period to save even more computation but it's negligible and the code looks nicer this way.
+                if (guestPeriod != RefreshSequence()) throw new Exception();
             } catch {
                 WriteError($"{hallwayName}: {ip} failed to ring doorbell", $"{hallway}: {ip} failed to ring doorbell, sent {guestPeriod}, period was evaluated to {period}");
                 WhenNotDebug(() => hallway.Banish(ip));
@@ -154,10 +136,8 @@ public class Doorkeeper {
     public Doorkeeper(Hallway hallway, string hallwayName) {
         this.hallway = hallway;
         this.hallwayName = hallwayName;
-        this.period = 0;
+        this.period = -1;
         this.guests = new Dictionary<IPAddress, Guest>();
-        RefreshSequence();
-        #pragma warning disable CS4014
-        BackgroundRefresh();
+        // an initial sequence generation is unneeded since it is impossible to be in period -1, so when the doorbell is rung for the first time, it will regenerate.
     }
 }
