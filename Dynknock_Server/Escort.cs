@@ -17,11 +17,11 @@ public class Escort {
 
     public static bool verbose { get; private set; }
     public static bool debug { get; private set; }
-    public static bool advanceOnFail { get; private set; }
+    public static bool dontAdvanceOnFail { get; private set; }
     public static async Task Main(string[] args) {
         argHandler.ParseArgs(args);
         debug = argHandler.GetFlag('d');
-        advanceOnFail = !argHandler.GetFlag('a') && debug;
+        dontAdvanceOnFail = argHandler.GetFlag('a') && debug;
         verbose = argHandler.GetFlag('v') && !debug; // debug verbosity overrides normal verbosity to avoid duplicate messages.
         string path;
         if (argHandler.GetValue("hallway-dir").IsSet()) {
@@ -56,7 +56,7 @@ public class Escort {
                     await Server.Start(hallway, hallwayName);
                 } catch (Exception e) {
                     ConsoleUtil.WriteColoredLine($"Hallway failure: {hallwayName}", ConsoleColor.Red);
-                    WriteVerbose(e.Message, ConsoleColor.Red);
+                    WriteEither(e.Message, ConsoleColor.Red);
                     if (debug) throw;
                 }
             }).Start();

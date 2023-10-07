@@ -27,12 +27,12 @@ public class Doorkeeper {
             if (disposed) throw new ObjectDisposedException("Guest");
             if (sent != sequence[idx]) {
                 SwitchDebug(() => {
-                    WriteDebug($"{hallwayName}: {ip} failed knock {idx}. Sent {sent.port}, expected {sequence[idx]}", ConsoleColor.Yellow);
+                    WriteDebug($"{hallwayName}: {ip} failed knock {idx}. Sent {sent}, expected {sequence[idx]}", ConsoleColor.Yellow);
                 }, () => {
                     Fail(false);
                 });
             }
-            if (!Escort.advanceOnFail) {
+            if (!Escort.dontAdvanceOnFail) {
                 WriteDebug($"{hallwayName}: Advancing sequence for {ip}");
                 idx++;
             }
@@ -86,10 +86,10 @@ public class Doorkeeper {
     private bool RefreshSequence() {
         var cPeriod = (int) DateTimeOffset.UtcNow.ToUnixTimeSeconds() / hallway.interval;
         if (cPeriod == period) {
-            WriteDebug("Refresh attempted, unneeded", ConsoleColor.Gray);
+            WriteDebug("Refresh attempted, unneeded", ConsoleColor.DarkGray);
             return false;
         }
-        WriteDebug("Starting Refresh", ConsoleColor.Gray);
+        WriteDebug("Starting Refresh", ConsoleColor.DarkGray);
         period = cPeriod;
         sequence = SequenceGen.GenPeriod(SequenceGen.GetKey(hallway.key), period, hallway.length);
         WriteDebug("Refreshed");
