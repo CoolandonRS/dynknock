@@ -2,14 +2,14 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <RootNamespace>Dynknock_Client</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="CoolandonRS.consolelib" Version="1.1.0" />
+      <PackageReference Include="CoolandonRS.consolelib" Version="2.1.0" />
     </ItemGroup>
 
 </Project>

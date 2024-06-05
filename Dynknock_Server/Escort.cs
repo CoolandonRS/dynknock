@@ -1,55 +1,62 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text.Json;
 using CoolandonRS.consolelib;
+using CoolandonRS.consolelib.Arg;
+using CoolandonRS.consolelib.Arg.Builders;
+using CoolandonRS.consolelib.Arg.Contracts;
 using static Dynknock_Server.Escort.VerbosityUtil;
 
 namespace Dynknock_Server; 
 
 public class Escort {
-    private static ArgHandler argHandler = new ArgHandler(new Dictionary<string, ArgData>() {
-        { "hallway-dir", new ArgData(new ArgDesc("--hallway-dir=[str]", "The directory to get Hallways from")) }
-    }, new Dictionary<char, FlagData>() {
-        { 'v', new FlagData(new ArgDesc("-v", "Verbose mode (print things other then failures)"))},
-        { 'd', new FlagData(new ArgDesc("-d", "Debug mode. Very verbose, does not grant entry, and overrides timeout to 120. Adds doorbell commands \"ADVANCE_\" to manually advance the knock index, and \"ENDKNOCK\" to deny entry."))},
-        { 'a', new FlagData(new ArgDesc("-a", "Only in debug mode: Don't advance on failure (if a knock is missed, the next correct knock is the missed one, not the next in the sequence)"))}
-    });
+    private static ArgHandler argHandler = new(
+        new ValueArg<string?>("hallwayDir", "The directory to get Hallways from", null, str => str),
+        new SingleFlagArg("verbose", "Verbose mode (print things other than failures)", 'v'),
+        new SingleFlagArg("debug", "Debug mode. Very verbose, does not grant entry, and overrides timeout to 120. Adds doorbell commands \"ADVANCE_\" to manually advance the knock index, and \"ENDKNOCK\" to deny entry.", 'd'),
+        new SingleFlagArg("advanceOnFailure", "DEBUG MODE ONLY: Don't advance on failure (if a knock is missed, the next correct knock is the missed one, not the next in the sequence)", 'a', true)
+    );
+
+    private static IArgContract argContract = ArgContracts.All(
+        ArgContracts.Relations("advanceOnFailure", [["debug"]], [], IArgContract.ConditionalString.From(null, "-d must be set for -a"))
+    );
 
     public static bool verbose { get; private set; }
     public static bool debug { get; private set; }
-    public static bool dontAdvanceOnFail { get; private set; }
+    public static bool advanceOnFail { get; private set; }
     public static async Task Main(string[] args) {
-        argHandler.ParseArgs(args);
-        debug = argHandler.GetFlag('d');
-        dontAdvanceOnFail = argHandler.GetFlag('a') && debug;
-        verbose = argHandler.GetFlag('v') && !debug; // debug verbosity overrides normal verbosity to avoid duplicate messages.
-        string path;
-        if (argHandler.GetValue("hallway-dir").IsSet()) {
-            path = argHandler.GetValue("hallway-dir").AsString();
-        } else {
+        argHandler.Parse(args);
+        var contractResult = argHandler.Validate(argContract);
+        if (!contractResult.Success) {
+            Console.WriteLine("Argument validation error.\n" + (contractResult.Message.ToString() ?? ""));
+            Environment.Exit(-1);
+        }
+        
+        debug = argHandler.Get<bool>("debug");
+        advanceOnFail = argHandler.Get<bool>("advanceOnFailure");
+        verbose = argHandler.Get<bool>("verbose") && !debug; // debug verbosity overrides normal verbosity to avoid duplicate messages.
+
+        var path = argHandler.Get<string?>("hallwayDir");
+        if (path is null) {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                path = @$"{Environment.GetEnvironmentVariable("appdata")}\dynknock\hallways";
+                path = Path.Combine(Environment.GetEnvironmentVariable("appdata")!, @"\dynknock\hallways");
             } else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
-                path = @"/etc/dynknock/hallways";
+                path = "/etc/dynknock/hallways";
             } else {
                 throw new PlatformNotSupportedException();
             }
         }
-        if (!Directory.Exists(path)) {
+        
+        if (!Directory.Exists(path) || Directory.GetFiles(path).Length == 0) {
             Directory.CreateDirectory(path);
             Console.WriteLine($"Put your hallways in {path}");
-            Environment.Exit(0);
-        }
-        var files = Directory.GetFiles(path);
-        if (files.Length == 0) {
-            Console.WriteLine($"Put your hallways in {path}");
-            Environment.Exit(0);
+            Environment.Exit(-1);
         }
         
-        foreach (var file in files) {
-            if (Path.GetExtension(file) is not (".json" or ".hallway")) continue;
-            var hallway = JsonSerializer.Deserialize(await File.ReadAllTextAsync(file), HallwayContext.Default.Hallway)!;
+        foreach (var file in new DirectoryInfo(path).GetFiles()) {
+            if (file.Extension is not (".json" or ".hallway")) continue;
+            var hallway = JsonSerializer.Deserialize(await File.ReadAllTextAsync(file.FullName), HallwayContext.Default.Hallway)!;
             new Thread(async () => {
-                var hallwayName = Path.GetFileNameWithoutExtension(file).Replace(".server", "");
+                var hallwayName = Path.GetFileNameWithoutExtension(file.FullName).Replace(".server", "");
                 try {
                     WriteEither($"Starting hallway {hallwayName}");
                     await Server.Start(hallway, hallwayName);

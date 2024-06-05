@@ -23,7 +23,7 @@ public class Doorkeeper {
         private readonly string hallwayName;
 
         public void Knock((int port, Protocol protocol) sent) {
-            if (disposed) throw new ObjectDisposedException("Guest");
+            ObjectDisposedException.ThrowIf(disposed, this);
             if (sent != sequence[idx]) {
                 SwitchDebug(() => {
                     WriteDebug($"{hallwayName}: {ip} failed knock {idx}. Sent {sent}, expected {sequence[idx]}", ConsoleColor.Yellow);
@@ -33,7 +33,7 @@ public class Doorkeeper {
             } else {
                 WriteDebug($"{hallwayName}: {ip} successfully knocked {idx} {sequence[idx]}");
             }
-            if (!Escort.dontAdvanceOnFail) {
+            if (Escort.advanceOnFail) {
                 WriteDebug($"{hallwayName}: Advancing sequence for {ip}");
                 idx++;
             }
@@ -44,7 +44,7 @@ public class Doorkeeper {
         }
         
         public void Dispose() {
-            if (disposed) throw new ObjectDisposedException("Guest");
+            ObjectDisposedException.ThrowIf(disposed, this);
             WriteDebug($"{hallwayName}: Disposed guest {ip}");
             disposed = true;
             cancel?.Cancel();
