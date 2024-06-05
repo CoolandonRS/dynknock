@@ -10,6 +10,9 @@ Not a full guide, but one with all the necessary bits, such that you could proba
 
 ### Doorbell
 - Before beginning the knock sequence, the "doorbell" must be rung. It is a statically defined port, who's packet must be UDP and contain the word "DOORBELL" encoded in UTF8 at the beginning of the payload. Immediately proceeding that is the UTF8 encoded integer string representing the current period.
+- When the server is in debug mode, there are two additional supported doorbell commands.
+    - "ENDKNOCK" which indicates the server should dispose the current guest.
+    - "ADVANCE_" which indicates the server should unconditionally increment current knock index.
 
 ### Knocking
 - The knocking system is fairly standard. After ringing the doorbell, you are expected to continue the knock sequence, by simply sending a packet with an empty payload to the correct port with the correct protocol.  If you get them all correct, the designated command is run.
